@@ -51,14 +51,18 @@
             </div>
         </div>
         
-        <!-- Selected Product Info -->
+        <!-- Selected Product Info with Image -->
         @if(session('selected_product'))
         <div class="card-modern p-4 sm:p-6 mb-6 sm:mb-8 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 animate-fade-in-up" style="animation-delay: 0.2s">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 sm:w-14 sm:h-14 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-                    <i class="fas fa-shopping-bag abc-red text-xl sm:text-2xl"></i>
+                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-md p-2">
+                    @if(session('selected_product')['type'] === 'sambal')
+                        <img src="{{ asset('images/Product1.png') }}" alt="ABC Sambal Asli" class="w-full h-full object-contain">
+                    @else
+                        <img src="{{ asset('images/Product2.png') }}" alt="ABC Kecap Manis" class="w-full h-full object-contain">
+                    @endif
                 </div>
-                <div>
+                <div class="flex-1">
                     <p class="text-xs sm:text-sm text-gray-600 mb-1">Produk yang dipilih:</p>
                     <h3 class="text-base sm:text-lg font-bold abc-red">{{ session('selected_product')['name'] }}</h3>
                 </div>
@@ -163,22 +167,26 @@
                     
                     <div id="termsContent" class="hidden mt-4 pt-4 border-t border-blue-200">
                         <h4 class="font-bold text-blue-900 mb-3">Syarat & Ketentuan:</h4>
-                        <ul class="space-y-2 text-xs sm:text-sm text-blue-800">
+                        <ol class="space-y-2 text-xs sm:text-sm text-blue-800 list-decimal list-inside">
                             <li class="flex items-start">
-                                <i class="fas fa-check-circle mr-2 mt-0.5 flex-shrink-0"></i>
-                                <span>Voucher berlaku untuk pembelian produk ABC di Alfamart</span>
+                                <span class="font-semibold mr-2">1.</span>
+                                <span>Voucher tidak dapat diperjualbelikan atau dipindahtangankan.</span>
                             </li>
                             <li class="flex items-start">
-                                <i class="fas fa-check-circle mr-2 mt-0.5 flex-shrink-0"></i>
-                                <span>Satu email hanya dapat mengklaim satu voucher</span>
+                                <span class="font-semibold mr-2">2.</span>
+                                <span>Voucher dapat digunakan di seluruh gerai Alfamart di Indonesia.</span>
                             </li>
                             <li class="flex items-start">
-                                <i class="fas fa-check-circle mr-2 mt-0.5 flex-shrink-0"></i>
-                                <span>Voucher berlaku hingga tanggal yang tertera</span>
+                                <span class="font-semibold mr-2">3.</span>
+                                <span>Voucher berlaku selama 1 x 24 jam sejak diterbitkan.</span>
                             </li>
                             <li class="flex items-start">
-                                <i class="fas fa-check-circle mr-2 mt-0.5 flex-shrink-0"></i>
-                                <span>Voucher tidak dapat digabungkan dengan promo lain</span>
+                                <span class="font-semibold mr-2">4.</span>
+                                <span>Silakan lakukan screenshot kode voucher setelah proses registrasi berhasil.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="font-semibold mr-2">5.</span>
+                                <span>Kode voucher akan dikirim secara otomatis ke alamat email yang terdaftar.</span>
                             </li>
                         </ul>
                     </div>

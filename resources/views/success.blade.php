@@ -19,62 +19,65 @@
         </div>
         
         <!-- Voucher Card -->
-        <div class="card-modern p-6 sm:p-8 lg:p-10 mb-6 bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 border-2 border-red-200 animate-fade-in-up" style="animation-delay: 0.1s">
+        <div class="card-modern p-4 sm:p-6 lg:p-8 mb-6 bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 border-2 border-red-200 animate-fade-in-up" style="animation-delay: 0.1s">
             <!-- Product Info -->
-            <div class="bg-white rounded-xl p-4 mb-6 shadow-md">
+            <div class="bg-white rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-md">
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 bg-gradient-abc rounded-full flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-shopping-bag text-white text-xl"></i>
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-abc rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-shopping-bag text-white text-lg sm:text-xl"></i>
                     </div>
                     <div>
                         <p class="text-xs sm:text-sm text-gray-600">Voucher berlaku untuk:</p>
-                        <p class="text-base sm:text-lg font-bold abc-red">{{ $data['product'] }}</p>
+                        <p class="text-sm sm:text-base lg:text-lg font-bold abc-red">{{ $data['product'] }}</p>
                     </div>
                 </div>
             </div>
             
             <!-- Voucher Code -->
-            <div class="text-center mb-6">
-                <p class="text-sm text-gray-600 mb-3 font-medium">Kode Voucher</p>
-                <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border-2 border-dashed border-red-300">
-                    <p class="text-2xl sm:text-3xl lg:text-4xl font-extrabold abc-red tracking-wider break-all">
+            <div class="text-center mb-4 sm:mb-6">
+                <p class="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 font-medium">Kode Voucher</p>
+                <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg border-2 border-dashed border-red-300">
+                    <p class="text-xl sm:text-2xl lg:text-3xl font-extrabold abc-red tracking-wider break-all">
                         {{ $data['voucher_code'] }}
                     </p>
                 </div>
             </div>
             
-            <!-- Barcode/QR Code - LARGE SIZE -->
-            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 sm:p-8 mb-6 shadow-inner">
+            <!-- Barcode/QR Code - INSIDE CARD -->
+            <div class="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-md">
                 @if(isset($data['barcode_path']) && $data['barcode_path'])
-                    <div class="flex justify-center mb-4">
-                        <img 
-                            src="{{ asset('storage/' . $data['barcode_path']) }}" 
-                            alt="Barcode {{ $data['voucher_code'] }}"
-                            class="w-full max-w-md h-auto"
-                        >
+                    <div class="flex justify-center items-center mb-3 sm:mb-4">
+                        <div class="w-full max-w-[250px] sm:max-w-xs">
+                            <img 
+                                src="{{ asset('storage/' . $data['barcode_path']) }}" 
+                                alt="Barcode {{ $data['voucher_code'] }}"
+                                class="w-full h-auto mx-auto"
+                            >
+                        </div>
                     </div>
                 @else
-                    <div class="barcode text-center text-6xl sm:text-7xl lg:text-8xl mb-4">
+                    <div class="barcode text-center text-5xl sm:text-6xl lg:text-7xl mb-3 sm:mb-4">
                         *{{ $data['voucher_code'] }}*
                     </div>
                 @endif
-                <div class="text-center">
-                    <p class="text-sm sm:text-base font-bold text-gray-700 mb-1">
-                        <i class="fas fa-qrcode mr-2 abc-red"></i> Scan barcode di kasir Alfamart
+                <div class="text-center border-t border-gray-200 pt-3 sm:pt-4">
+                    <p class="text-xs sm:text-sm font-bold text-gray-800 mb-1 flex items-center justify-center gap-2">
+                        <i class="fas fa-qrcode abc-red"></i>
+                        <span>Scan barcode di kasir Alfamart</span>
                     </p>
-                    <p class="text-xs sm:text-sm text-gray-600">Tunjukkan kode ini untuk mendapatkan potongan harga</p>
+                    <p class="text-xs text-gray-600">Tunjukkan kode ini untuk mendapatkan potongan harga</p>
                 </div>
             </div>
             
             <!-- Voucher Details Grid -->
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="bg-white rounded-xl p-4 shadow-md text-center">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                <div class="bg-white rounded-xl p-3 sm:p-4 shadow-md text-center">
                     <p class="text-xs text-gray-600 mb-1">Nominal Voucher</p>
-                    <p class="text-lg sm:text-xl font-extrabold abc-red">{{ $data['nominal'] }}</p>
+                    <p class="text-base sm:text-lg lg:text-xl font-extrabold abc-red">{{ $data['nominal'] }}</p>
                 </div>
-                <div class="bg-white rounded-xl p-4 shadow-md text-center">
+                <div class="bg-white rounded-xl p-3 sm:p-4 shadow-md text-center">
                     <p class="text-xs text-gray-600 mb-1">Berlaku Hingga</p>
-                    <p class="text-lg sm:text-xl font-extrabold text-gray-800">{{ $data['expired_date'] }}</p>
+                    <p class="text-base sm:text-lg lg:text-xl font-extrabold text-gray-800">{{ $data['expired_date'] }}</p>
                 </div>
             </div>
         </div>

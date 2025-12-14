@@ -21,7 +21,7 @@ class VoucherCode extends Model
     // Relationship
     public function claim()
     {
-        return $this->hasOne(VoucherClaim::class);
+        return $this->hasOne(VoucherClaim::class, 'voucher_code_id');
     }
 
     // Scopes

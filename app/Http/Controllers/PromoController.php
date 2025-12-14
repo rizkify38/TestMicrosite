@@ -77,48 +77,67 @@ class PromoController extends Controller
 
         $selectedProduct = session('selected_product');
 
-        // Cari voucher code yang belum di-claim (sequential order)
-        $voucherCode = \App\Models\VoucherCode::unclaimed()
-                        ->byProductType($selectedProduct['type'])
-                        ->orderBy('id', 'asc')
-                        ->lockForUpdate() // Lock row untuk prevent race condition
-                        ->first();
-
-        // Jika voucher code habis
-        if (!$voucherCode) {
-            return redirect()->route('promo')->with('error', 'Maaf, voucher untuk produk ini sudah habis. Silakan coba produk lainnya.');
-        }
-
-        // Mark code as claimed
-        $voucherCode->update([
-            'is_claimed' => true,
-            'claimed_at' => now(),
-        ]);
-
-        // Create voucher claim record
-        $claim = \App\Models\VoucherClaim::create([
-            'voucher_code_id' => $voucherCode->id,
-            'customer_name' => $request->nama_lengkap,
-            'customer_email' => $request->email,
-            'customer_phone' => $request->nomor_telepon,
-            'product_type' => $selectedProduct['type'],
-            'product_name' => $selectedProduct['name'],
-            'expired_at' => '2026-02-14',
-        ]);
-
-        // Generate barcode/QR code
         try {
-            $barcodePath = $this->barcodeService->generateVoucherBarcode($voucherCode->code);
-            $claim->update(['barcode_path' => $barcodePath]);
+            // Wrap dalam transaction untuk data consistency
+            $voucherCode = \DB::transaction(function () use ($request, $selectedProduct) {
+                // Cari voucher code yang belum di-claim (sequential order)
+                $voucherCode = \App\Models\VoucherCode::unclaimed()
+                                ->byProductType($selectedProduct['type'])
+                                ->orderBy('id', 'asc')
+                                ->lockForUpdate() // Lock row untuk prevent race condition
+                                ->first();
+
+                // Jika voucher code habis
+                if (!$voucherCode) {
+                    throw new \Exception('Voucher habis');
+                }
+
+                // Mark code as claimed
+                $voucherCode->update([
+                    'is_claimed' => true,
+                    'claimed_at' => now(),
+                ]);
+
+                // Create voucher claim record
+                $claim = \App\Models\VoucherClaim::create([
+                    'voucher_code_id' => $voucherCode->id,
+                    'customer_name' => $request->nama_lengkap,
+                    'customer_email' => $request->email,
+                    'customer_phone' => $request->nomor_telepon,
+                    'product_type' => $selectedProduct['type'],
+                    'product_name' => $selectedProduct['name'],
+                    'expired_at' => '2026-02-14',
+                ]);
+
+                // Generate barcode/QR code
+                try {
+                    $barcodePath = $this->barcodeService->generateVoucherBarcode($voucherCode->code);
+                    $claim->update(['barcode_path' => $barcodePath]);
+                } catch (\Exception $e) {
+                    // Log error tapi tetap lanjut (barcode bisa di-generate ulang nanti)
+                    \Log::error('Failed to generate barcode: ' . $e->getMessage());
+                }
+
+                return $voucherCode;
+            });
+
+            // Hapus session produk setelah berhasil submit
+            session()->forget('selected_product');
+
+            return redirect()->route('success', ['code' => $voucherCode->code]);
+
         } catch (\Exception $e) {
-            // Log error tapi tetap lanjut
-            \Log::error('Failed to generate barcode: ' . $e->getMessage());
+            // Handle error
+            if ($e->getMessage() === 'Voucher habis') {
+                return redirect()->route('promo')->with('error', 'Maaf, voucher untuk produk ini sudah habis. Silakan coba produk lainnya.');
+            }
+
+            // Log unexpected errors
+            \Log::error('Error submitting voucher: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
+            return redirect()->route('form')->with('error', 'Terjadi kesalahan saat memproses voucher. Silakan coba lagi.');
         }
-
-        // Hapus session produk setelah berhasil submit
-        session()->forget('selected_product');
-
-        return redirect()->route('success', ['code' => $voucherCode->code]);
     }
 
     public function success($code)

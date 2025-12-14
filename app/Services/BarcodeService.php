@@ -2,33 +2,37 @@
 
 namespace App\Services;
 
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
+use Milon\Barcode\Facades\DNS1DFacade as DNS1D;
 
 class BarcodeService
 {
     /**
-     * Generate barcode untuk voucher code
+     * Generate barcode untuk voucher code (1D Barcode - Code128)
      * 
      * @param string $voucherCode
      * @return string Path ke barcode image
      */
     public function generateVoucherBarcode($voucherCode)
     {
-        // Generate QR Code (meskipun namanya barcode, kita pakai QR code library)
-        // Untuk barcode 1D, kita bisa pakai format text dengan font khusus
-        // Atau generate QR code yang bisa di-scan
-        
-        $qrCode = QrCode::format('png')
-                        ->size(400) // Increased from 300 to 400 for better scanning
-                        ->margin(2)
-                        ->generate($voucherCode);
-        
-        // Simpan ke storage
-        $filename = 'barcodes/' . $voucherCode . '.png';
-        Storage::disk('public')->put($filename, $qrCode);
-        
-        return $filename;
+        try {
+            // Generate 1D Barcode (Code128) menggunakan Milon Barcode
+            // Format: PNG, Height: 80, Width: 2
+            $barcode = DNS1D::getBarcodePNG($voucherCode, 'C128', 2, 80);
+            
+            // Decode base64 to binary
+            $barcodeImage = base64_decode($barcode);
+            
+            // Simpan ke storage
+            $filename = 'barcodes/' . $voucherCode . '.png';
+            Storage::disk('public')->put($filename, $barcodeImage);
+            
+            return $filename;
+            
+        } catch (\Exception $e) {
+            \Log::error('Barcode generation failed: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**
@@ -39,23 +43,9 @@ class BarcodeService
      */
     public function generateVoucherBarcodeWithData($voucherData)
     {
-        // Encode data voucher ke JSON untuk QR code
-        $data = json_encode([
-            'code' => $voucherData['voucher_code'],
-            'value' => $voucherData['nominal'] ?? 'Rp 5.000',
-            'product' => $voucherData['product_name'] ?? '',
-            'expired' => $voucherData['expired_date'] ?? '',
-        ]);
-        
-        $qrCode = QrCode::format('png')
-                        ->size(300)
-                        ->margin(1)
-                        ->generate($data);
-        
-        $filename = 'barcodes/' . $voucherData['voucher_code'] . '.png';
-        Storage::disk('public')->put($filename, $qrCode);
-        
-        return $filename;
+        // Untuk barcode 1D, kita hanya encode voucher code
+        // Data lain ditampilkan di UI
+        return $this->generateVoucherBarcode($voucherData['voucher_code']);
     }
 
     /**

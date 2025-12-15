@@ -133,21 +133,58 @@
                     <p class="text-xs text-gray-500 mt-1.5">Format: 08xxxxxxxxxx (10-15 digit)</p>
                 </div>
                 
-                <!-- Email -->
+                <!-- Email with OTP -->
                 <div>
                     <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-envelope mr-2 abc-red"></i> Email
                     </label>
-                    <input 
-                        type="email" 
-                        id="email" 
-                        name="email" 
-                        value="{{ old('email') }}"
-                        class="input-modern"
-                        placeholder="nama@email.com"
-                        required
-                    >
+                    <div class="flex gap-2">
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            value="{{ old('email') }}"
+                            class="input-modern flex-1"
+                            placeholder="nama@email.com"
+                            required
+                        >
+                        <button 
+                            type="button" 
+                            id="sendOtpBtn"
+                            class="btn-secondary px-4 sm:px-6 whitespace-nowrap text-sm sm:text-base"
+                        >
+                            <i class="fas fa-paper-plane mr-1"></i> Kirim OTP
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1.5">Satu email hanya bisa mendapatkan satu voucher</p>
+                    <p id="emailStatus" class="text-xs mt-1.5"></p>
+                </div>
+                
+                <!-- OTP Verification Section (hidden initially) -->
+                <div id="otpSection" class="hidden">
+                    <label for="otpCode" class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-key mr-2 abc-red"></i> Kode OTP
+                    </label>
+                    <div class="flex gap-2">
+                        <input 
+                            type="text" 
+                            id="otpCode" 
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            class="input-modern flex-1 text-center text-2xl tracking-widest font-bold"
+                            placeholder="000000"
+                        >
+                        <button 
+                            type="button" 
+                            id="verifyOtpBtn"
+                            class="btn-primary px-4 sm:px-6 whitespace-nowrap text-sm sm:text-base"
+                        >
+                            <i class="fas fa-check mr-1"></i> Verifikasi
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1.5">Masukkan 6 digit kode OTP yang dikirim ke email Anda</p>
+                    <p id="otpStatus" class="text-xs mt-1.5"></p>
+                    <input type="hidden" id="emailVerified" value="0">
                 </div>
                 
                 <!-- Syarat & Ketentuan -->
@@ -214,6 +251,10 @@
 </div>
 
 <script>
+// CSRF Token for AJAX requests
+const csrfToken = '{{ csrf_token() }}';
+
+// Toggle Terms & Conditions
 function toggleTerms() {
     const content = document.getElementById('termsContent');
     content.classList.toggle('hidden');
@@ -223,6 +264,140 @@ function toggleTerms() {
 document.getElementById('nomor_telepon').addEventListener('input', function(e) {
     let value = e.target.value.replace(/\D/g, '');
     e.target.value = value;
+});
+
+// Auto-format OTP code (numbers only)
+document.getElementById('otpCode').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    e.target.value = value;
+});
+
+// Send OTP Button
+document.getElementById('sendOtpBtn').addEventListener('click', async function() {
+    const email = document.getElementById('email').value.trim();
+    const emailStatus = document.getElementById('emailStatus');
+    const sendBtn = this;
+    
+    // Validate email
+    if (!email) {
+        emailStatus.innerHTML = '<span class="text-red-600"><i class="fas fa-exclamation-circle"></i> Masukkan email terlebih dahulu</span>';
+        return;
+    }
+    
+    // Show loading
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Mengirim...';
+    emailStatus.innerHTML = '<span class="text-blue-600"><i class="fas fa-circle-notch fa-spin"></i> Mengirim OTP...</span>';
+    
+    try {
+        const response = await fetch('{{ route("send-otp") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ email: email })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            // Success
+            emailStatus.innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-circle"></i> ' + data.message + '</span>';
+            document.getElementById('otpSection').classList.remove('hidden');
+            document.getElementById('email').readOnly = true;
+            sendBtn.innerHTML = '<i class="fas fa-redo mr-1"></i> Kirim Ulang';
+        } else {
+            // Error
+            emailStatus.innerHTML = '<span class="text-red-600"><i class="fas fa-exclamation-circle"></i> ' + data.message + '</span>';
+        }
+    } catch (error) {
+        emailStatus.innerHTML = '<span class="text-red-600"><i class="fas fa-exclamation-circle"></i> Terjadi kesalahan. Silakan coba lagi.</span>';
+    } finally {
+        sendBtn.disabled = false;
+        if (sendBtn.innerHTML.includes('Mengirim...')) {
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i> Kirim OTP';
+        }
+    }
+});
+
+// Verify OTP Button
+document.getElementById('verifyOtpBtn').addEventListener('click', async function() {
+    const email = document.getElementById('email').value.trim();
+    const otpCode = document.getElementById('otpCode').value.trim();
+    const otpStatus = document.getElementById('otpStatus');
+    const verifyBtn = this;
+    
+    // Validate OTP
+    if (!otpCode || otpCode.length !== 6) {
+        otpStatus.innerHTML = '<span class="text-red-600"><i class="fas fa-exclamation-circle"></i> Masukkan 6 digit kode OTP</span>';
+        return;
+    }
+    
+    // Show loading
+    verifyBtn.disabled = true;
+    verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Memverifikasi...';
+    otpStatus.innerHTML = '<span class="text-blue-600"><i class="fas fa-circle-notch fa-spin"></i> Memverifikasi OTP...</span>';
+    
+    try {
+        const response = await fetch('{{ route("verify-otp") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ 
+                email: email,
+                otp_code: otpCode 
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            // Success - OTP verified!
+            otpStatus.innerHTML = '<span class="text-green-600 font-bold"><i class="fas fa-check-circle"></i> ' + data.message + '</span>';
+            document.getElementById('emailVerified').value = '1';
+            document.getElementById('otpCode').readOnly = true;
+            verifyBtn.style.display = 'none';
+            
+            // Enable submit button
+            const submitBtn = document.querySelector('button[type="submit"]');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            // Show success animation
+            document.getElementById('otpSection').classList.add('bg-green-50', 'border', 'border-green-200', 'rounded-xl', 'p-4');
+        } else {
+            // Error
+            otpStatus.innerHTML = '<span class="text-red-600"><i class="fas fa-times-circle"></i> ' + data.message + '</span>';
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fas fa-check mr-1"></i> Verifikasi';
+        }
+    } catch (error) {
+        otpStatus.innerHTML = '<span class="text-red-600"><i class="fas fa-exclamation-circle"></i> Terjadi kesalahan. Silakan coba lagi.</span>';
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = '<i class="fas fa-check mr-1"></i> Verifikasi';
+    }
+});
+
+// Disable submit button initially (until OTP verified)
+window.addEventListener('DOMContentLoaded', function() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    submitBtn.title = 'Verifikasi email terlebih dahulu';
+});
+
+// Form submission validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const emailVerified = document.getElementById('emailVerified').value;
+    
+    if (emailVerified !== '1') {
+        e.preventDefault();
+        alert('Silakan verifikasi email Anda dengan OTP terlebih dahulu!');
+        return false;
+    }
 });
 </script>
 @endsection

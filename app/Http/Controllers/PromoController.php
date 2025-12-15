@@ -64,11 +64,78 @@ class PromoController extends Controller
         $request->validate([
             'nama_lengkap' => 'required|string|max:100',
             'nomor_telepon' => 'required|string|max:15',
-            'email' => 'required|email|unique:voucher_claims,customer_email', // EMAIL HARUS UNIQUE!
+            'email' => 'required|email',
             'syarat' => 'required|accepted'
-        ], [
-            'email.unique' => 'Email ini sudah pernah mendapatkan voucher. Satu email hanya bisa mendapatkan satu voucher.'
         ]);
+
+        // CHECK OTP VERIFICATION FIRST
+        $otpService = app(\App\Services\OtpService::class);
+        $email = strtolower(trim($request->email));
+        
+        if (!$otpService->isEmailVerified($email)) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['email' => 'Email belum diverifikasi. Silakan verifikasi email dengan OTP terlebih dahulu.']);
+        }
+
+        // STRICT EMAIL DOMAIN VALIDATION
+        // Hanya allow email dari domain yang sudah ditentukan
+        $email = strtolower(trim($request->email));
+        
+        // Safety check: pastikan email valid format
+        if (!str_contains($email, '@')) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['email' => 'Format email tidak valid.']);
+        }
+        
+        // Extract domain dari email
+        [$username, $domain] = explode('@', $email);
+        
+        // Whitelist domain yang diperbolehkan
+        $allowedDomains = [
+            'gmail.com',
+            'yahoo.com',
+            'yahoo.co.id',
+            'outlook.com',
+            'hotmail.com',
+            'icloud.com',
+            'live.com',
+            'aol.com',
+        ];
+        
+        // Cek apakah domain ada di whitelist
+        if (!in_array($domain, $allowedDomains)) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['email' => 'Email harus menggunakan domain yang valid (gmail.com, yahoo.com, outlook.com, dll). Domain "' . $domain . '" tidak diperbolehkan.']);
+        }
+        
+        // Cek apakah email exact match sudah ada (unique constraint)
+        $exactMatch = \App\Models\VoucherClaim::where('customer_email', $email)->exists();
+        if ($exactMatch) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['email' => 'Email ini sudah pernah mendapatkan voucher. Satu email hanya bisa mendapatkan satu voucher.']);
+        }
+        
+        // Normalize dan cek nomor telepon
+        $phone = preg_replace('/[^0-9]/', '', $request->nomor_telepon); // Remove non-numeric
+        $phoneExists = \App\Models\VoucherClaim::whereRaw('REPLACE(REPLACE(REPLACE(customer_phone, " ", ""), "-", ""), "+", "") = ?', [$phone])->exists();
+        if ($phoneExists) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['nomor_telepon' => 'Nomor telepon ini sudah pernah mendapatkan voucher. Satu nomor telepon hanya bisa mendapatkan satu voucher.']);
+        }
+        
+        // Normalize dan cek nama lengkap (case-insensitive, trim whitespace)
+        $name = strtolower(trim($request->nama_lengkap));
+        $nameExists = \App\Models\VoucherClaim::whereRaw('LOWER(TRIM(customer_name)) = ?', [$name])->exists();
+        if ($nameExists) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['nama_lengkap' => 'Nama ini sudah pernah mendapatkan voucher. Satu nama hanya bisa mendapatkan satu voucher.']);
+        }
 
         // Cek jika ada produk yang dipilih
         if (!session()->has('selected_product')) {
@@ -98,7 +165,11 @@ class PromoController extends Controller
                     'claimed_at' => now(),
                 ]);
 
-                // Create voucher claim record
+                // Generate barcode FIRST (sebelum create claim)
+                // Jika barcode gagal, transaction akan rollback
+                $barcodePath = $this->barcodeService->generateVoucherBarcode($voucherCode->code);
+
+                // Create voucher claim record dengan barcode path
                 $claim = \App\Models\VoucherClaim::create([
                     'voucher_code_id' => $voucherCode->id,
                     'customer_name' => $request->nama_lengkap,
@@ -106,17 +177,9 @@ class PromoController extends Controller
                     'customer_phone' => $request->nomor_telepon,
                     'product_type' => $selectedProduct['type'],
                     'product_name' => $selectedProduct['name'],
-                    'expired_at' => '2026-02-14',
+                    'barcode_path' => $barcodePath,
+                    'expired_at' => Carbon::now()->addDay(), // 1x24 jam (1 hari) dari sekarang
                 ]);
-
-                // Generate barcode/QR code
-                try {
-                    $barcodePath = $this->barcodeService->generateVoucherBarcode($voucherCode->code);
-                    $claim->update(['barcode_path' => $barcodePath]);
-                } catch (\Exception $e) {
-                    // Log error tapi tetap lanjut (barcode bisa di-generate ulang nanti)
-                    \Log::error('Failed to generate barcode: ' . $e->getMessage());
-                }
 
                 return $voucherCode;
             });
@@ -130,6 +193,13 @@ class PromoController extends Controller
             // Handle error
             if ($e->getMessage() === 'Voucher habis') {
                 return redirect()->route('promo')->with('error', 'Maaf, voucher untuk produk ini sudah habis. Silakan coba produk lainnya.');
+            }
+
+            // Handle barcode generation errors
+            if (str_contains($e->getMessage(), 'Barcode generation failed')) {
+                \Log::error('Barcode generation error: ' . $e->getMessage());
+                \Log::error($e->getTraceAsString());
+                return redirect()->route('form')->with('error', 'Terjadi kesalahan saat membuat barcode. Silakan coba lagi atau hubungi admin.');
             }
 
             // Log unexpected errors

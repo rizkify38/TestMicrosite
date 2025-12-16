@@ -122,11 +122,7 @@
             </div>
         </div>
 
-        <!-- Brand Section -->
-        <div class="text-center py-6 sm:py-12 border-t border-gray-200 animate-fade-in-up" style="animation-delay: 0.5s">
-            <h2 class="text-xl sm:text-3xl lg:text-4xl font-extrabold abc-red mb-2">ABC</h2>
-            <p class="text-base sm:text-xl lg:text-2xl font-bold text-gray-800">Ahlinya Buat Citarasa</p>
-        </div>
+        @include('partials.footer')
     </div>
 </div>
 

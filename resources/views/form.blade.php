@@ -247,6 +247,8 @@
                 <i class="fas fa-arrow-left mr-2"></i> Kembali Pilih Produk
             </a>
         </div>
+        
+        @include('partials.footer')
     </div>
 </div>
 

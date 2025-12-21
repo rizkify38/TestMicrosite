@@ -3,6 +3,20 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PromoController;
 use App\Http\Controllers\OtpController;
+use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\DashboardController;
+
+// Admin Routes
+Route::redirect('/admin', '/admin/login');
+Route::prefix('admin')->group(function () {
+    Route::get('/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
+    Route::post('/login', [AdminAuthController::class, 'login'])->name('admin.login.submit');
+    Route::post('/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
+    
+    Route::middleware('admin.auth')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+    });
+});
 
 Route::get('/', [PromoController::class, 'homepage'])->name('homepage');
 Route::get('/promo', [PromoController::class, 'promo'])->name('promo');

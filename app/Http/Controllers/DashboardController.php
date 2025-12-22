@@ -31,7 +31,7 @@ class DashboardController extends Controller
         // Recent Visitors (Filtered + Paginated)
         $recentVisitors = PageVisit::whereBetween('visited_at', [$startDate, $endDate])
             ->orderByDesc('visited_at')
-            ->simplePaginate(10, ['*'], 'visits_page')
+            ->paginate(10, ['*'], 'visits_page')
             ->appends($request->all());
 
         // 2. Registered Users (Filtered + Search + Paginated)

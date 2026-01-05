@@ -166,6 +166,9 @@
                     </table>
                 </div>
             </div>
+            <div class="card-footer border-top bg-white px-4 py-3">
+                {{ $pageVisits->links('pagination::bootstrap-5') }}
+            </div>
         </div>
     </div>
 </div>

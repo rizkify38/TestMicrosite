@@ -21,12 +21,13 @@ class DashboardController extends Controller
         $todayVisits = PageVisit::whereDate('visited_at', today())->count(); // Keep absolute logic for "Today"
         $thisWeekVisits = PageVisit::whereBetween('visited_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
 
-        // Visits by Page (Filtered)
+        // Visits by Page (Filtered + Paginated)
         $pageVisits = PageVisit::whereBetween('visited_at', [$startDate, $endDate])
             ->select('page_url', DB::raw('count(*) as total'))
             ->groupBy('page_url')
             ->orderByDesc('total')
-            ->get();
+            ->paginate(10, ['*'], 'pages_page')
+            ->appends($request->all());
 
         // Recent Visitors (Filtered + Paginated)
         $recentVisitors = PageVisit::whereBetween('visited_at', [$startDate, $endDate])
